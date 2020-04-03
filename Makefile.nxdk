@@ -1,0 +1,31 @@
+NXDK_DIR = /home/fox/Data/Projects/XboxDev/nxdk
+
+XBE_TITLE = "Heart of Darkness"
+GEN_XISO = Heart_of_Darkness-Original_Xbox.iso
+
+CXXFLAGS = -Wall -Wpedantic
+
+SRCS += andy.cpp benchmark.cpp fileio.cpp fs_win32.cpp game.cpp \
+	level1_rock.cpp level2_fort.cpp level3_pwr1.cpp level4_isld.cpp \
+	level5_lava.cpp level6_pwr2.cpp level7_lar1.cpp level8_lar2.cpp level9_dark.cpp \
+	lzw.cpp main.cpp mdec.cpp menu.cpp mixer.cpp monsters.cpp paf.cpp random.cpp \
+	resource.cpp screenshot.cpp sound.cpp staticres.cpp system_sdl2.cpp \
+	util.cpp video.cpp
+
+SCALERS := scaler_nearest.cpp #FIXME: scaler_xbr.cpp is broken in nxdk
+
+SRCS += $(SCALERS)
+
+SRCS += 3p/libxbr-standalone/xbr.c 3p/inih/ini.c
+
+all_local: data all
+
+include $(NXDK_DIR)/Makefile
+
+data:
+	@mkdir -p $(OUTPUT_DIR)
+	cp README.txt $(OUTPUT_DIR)/
+	cp RELEASES.yaml $(OUTPUT_DIR)/
+
+NXDK_SDL = y
+include $(NXDK_DIR)/Makefile

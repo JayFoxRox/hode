@@ -25,4 +25,26 @@ void debug(int mask, const char *msg, ...);
 void error(const char *msg, ...);
 void warning(const char *msg, ...);
 
+
+#if defined(NXDK)
+#include <ctype.h>
+
+static int strcasecmp(const char *s1, const char *s2) {
+  char c1 = *s1;
+  char c2 = *s2;
+  while(*s1 && *s2) {
+    c1 = tolower(*s1);
+    c2 = tolower(*s2);
+    if (c1 != c2) {
+      break;
+    }
+    s1++;
+    s2++;
+  }
+  return c1 - c2;
+}
+#else
+#include <strings.h>
+#endif
+
 #endif // UTIL_H__

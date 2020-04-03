@@ -4,3 +4,8 @@ build
 hode
 hode.ini
 setup.cfg
+*.obj
+*.exe
+*.lib
+*.iso
+bin/

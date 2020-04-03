@@ -7,6 +7,9 @@
 #define LOG_TAG "HodJni"
 #include <android/log.h>
 #endif
+#if defined(NXDK)
+#include <hal/debug.h>
+#endif
 #include <stdarg.h>
 #include "util.h"
 
@@ -21,6 +24,9 @@ void debug(int mask, const char *msg, ...) {
 		va_end(va);
 		printf("%s\n", buf);
 		fflush(stdout);
+#if defined(NXDK)
+		debugPrint(buf);
+#endif
 #ifdef __ANDROID__
 		__android_log_print(ANDROID_LOG_INFO, LOG_TAG, "%s", buf);
 #endif
@@ -37,7 +43,12 @@ void error(const char *msg, ...) {
 #ifdef __ANDROID__
 	__android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "%s", buf);
 #endif
+#if defined(NXDK)
+	debugPrint(buf);
+	while(true);
+#else
 	exit(-1);
+#endif
 }
 
 void warning(const char *msg, ...) {
@@ -49,6 +60,9 @@ void warning(const char *msg, ...) {
 	fprintf(stderr, "WARNING: %s!\n", buf);
 #ifdef __ANDROID__
 	__android_log_print(ANDROID_LOG_WARN, LOG_TAG, "%s", buf);
+#endif
+#if defined(NXDK)
+	debugPrint(buf);
 #endif
 }
 
