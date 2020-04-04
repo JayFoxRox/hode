@@ -43,7 +43,11 @@ struct KeyMapping {
 
 struct System_SDL2 : System {
 	enum {
+#if defined(NXDK)
+		kJoystickCommitValue = 0x5000,
+#else
 		kJoystickCommitValue = 3200,
+#endif
 		kKeyMappingsSize = 20,
 		kAudioHz = 22050
 	};
@@ -590,29 +594,44 @@ void System_SDL2::processEvents() {
 			if (_controller) {
 				const bool pressed = (ev.cbutton.state == SDL_PRESSED);
 				switch (ev.cbutton.button) {
+#if defined(NXDK)
+				case SDL_CONTROLLER_BUTTON_X:
+#else
 				case SDL_CONTROLLER_BUTTON_A:
+#endif
 					if (pressed) {
 						pad.mask |= SYS_INP_RUN;
 					} else {
 						pad.mask &= ~SYS_INP_RUN;
 					}
 					break;
+#if defined(NXDK)
+				case SDL_CONTROLLER_BUTTON_A:
+#else
 				case SDL_CONTROLLER_BUTTON_B:
+#endif
 					if (pressed) {
 						pad.mask |= SYS_INP_JUMP;
 					} else {
 						pad.mask &= ~SYS_INP_JUMP;
 					}
 					break;
+#if defined(NXDK)
+				case SDL_CONTROLLER_BUTTON_B:
+				case SDL_CONTROLLER_BUTTON_Y:
+#else
 				case SDL_CONTROLLER_BUTTON_X:
+#endif
 					if (pressed) {
 						pad.mask |= SYS_INP_SHOOT;
 					} else {
 						pad.mask &= ~SYS_INP_SHOOT;
 					}
 					break;
+#if !defined(NXDK)
 				case SDL_CONTROLLER_BUTTON_Y:
 					break;
+#endif
 				case SDL_CONTROLLER_BUTTON_BACK:
 					inp.skip = pressed;
 					break;
