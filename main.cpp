@@ -4,8 +4,11 @@
  */
 
 #include <SDL.h>
+#if !defined(NXDK)
 #include <getopt.h>
 #include <sys/stat.h>
+#endif
+#include <stdlib.h>
 
 #include "3p/inih/ini.h"
 
@@ -21,11 +24,34 @@
 #ifdef __SWITCH__
 #include <switch.h>
 #endif
+#if defined(NXDK)
+#include <windows.h>
+#include <nxdk/mount.h>
+#include <hal/video.h>
+#include <hal/debug.h>
+
+extern "C" {
+	extern uint8_t* _fb;
+}
+
+void * __cdecl operator new(unsigned int size) {
+	void *ptr = malloc(size);
+	memset(ptr, 0x00, size);
+	return ptr;
+}
+
+void __cdecl operator delete(void *ptr) {
+	free(ptr);
+}
+#endif
+
 
 static const char *_title = "Heart of Darkness";
 
 #ifdef __vita__
 static const char *_configIni = "ux0:data/hode/hode.ini";
+#elif defined(NXDK)
+static const char *_configIni = "D:\\hode.ini";
 #else
 static const char *_configIni = "hode.ini";
 #endif
@@ -116,8 +142,10 @@ static int handleConfigIni(void *userdata, const char *section, const char *name
 			g_system->setScaler(0, scale);
 		} else if (strcmp(name, "scale_algorithm") == 0) {
 			g_system->setScaler(value, 0);
+#if !defined(NXDK)
 		} else if (strcmp(name, "gamma") == 0) {
 			g_system->setGamma(atof(value));
+#endif
 		} else if (strcmp(name, "fullscreen") == 0) {
 			_fullscreen = configBool(value);
 		} else if (strcmp(name, "widescreen") == 0) {
@@ -127,14 +155,46 @@ static int handleConfigIni(void *userdata, const char *section, const char *name
 	return 0;
 }
 
+
 int main(int argc, char *argv[]) {
 #ifdef __SWITCH__
 	socketInitializeDefault();
 	nxlinkStdio();
 #endif
+#if defined(NXDK)
+	// set display mode
+	XVideoSetMode(640, 480, 32, REFRESH_DEFAULT);
+
+#if 1
+	// we consume a lot of memory, so we need to claim the framebuffer
+	size_t fb_size = 640 * 480 * 4;
+	_fb = (uint8_t*)MmAllocateContiguousMemoryEx(fb_size, 0, 0xFFFFFFFF, 0x1000, PAGE_READWRITE | PAGE_WRITECOMBINE);
+	memset(_fb, 0x00, fb_size);
+#define _PCRTC_START				0xFD600800
+	*(unsigned int*)(_PCRTC_START) = (unsigned int)_fb & 0x03FFFFFF;
+#endif
+
+	// nxdk needs this hint to work around bugs
+	SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
+
+#endif
 #ifdef __vita__
 	const char *dataPath = "ux0:data/hode";
 	const char *savePath = "ux0:data/hode";
+#elif defined(NXDK)
+	const char *dataPath = "D:";
+	const char *savePath = "E:\\UDATA\\hode";
+
+	// mount save partition
+	BOOL mounted = nxMountDrive('E', "\\Device\\Harddisk0\\Partition1\\");
+	assert(mounted);
+
+	// create save directory with metadata
+	if (CreateDirectoryA(savePath, NULL)) {
+		FILE* titleMetaFile = fopen("E:\\UDATA\\hode\\TitleMeta.xbx", "wb");
+		fprintf(titleMetaFile, "TitleName=Heart of Darkness\r\n");
+		fclose(titleMetaFile);
+	}
 #else
 	char *dataPath = 0;
 	char *savePath = 0;
@@ -146,6 +206,7 @@ int main(int argc, char *argv[]) {
 	g_debugMask = 0; //kDebug_GAME | kDebug_RESOURCE | kDebug_SOUND | kDebug_MONSTER;
 	int cheats = 0;
 
+#if !defined(NXDK)
 	if (argc == 2) {
 		// data path as the only command line argument
 		struct stat st;
@@ -203,6 +264,7 @@ int main(int argc, char *argv[]) {
 			return -1;
 		}
 	}
+#endif
 	Game *g = new Game(dataPath ? dataPath : _defaultDataPath, savePath ? savePath : _defaultSavePath, cheats);
 	ini_parse(_configIni, handleConfigIni, g);
 	if (_runBenchmark) {
@@ -238,12 +300,19 @@ int main(int argc, char *argv[]) {
 	g->_mix.fini();
 	g_system->destroy();
 	delete g;
-#ifndef __vita__
+#if !defined(__vita__) && !defined(NXDK)
 	free(dataPath);
 	free(savePath);
 #endif
 #ifdef __SWITCH__
 	socketExit();
+#endif
+#if defined(NXDK)
+	// turn screen black (disable DACs instead?)
+	memset(_fb, 0x00, fb_size);
+
+	// we will reboot to menu
+	HalReturnToFirmware(HalQuickRebootRoutine);
 #endif
 	return 0;
 }

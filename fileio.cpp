@@ -3,7 +3,6 @@
  * Copyright (C) 2009-2011 Gregory Montoir (cyx@users.sourceforge.net)
  */
 
-#include <sys/param.h>
 #include "fileio.h"
 #include "util.h"
 

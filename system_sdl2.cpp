@@ -16,15 +16,23 @@ static const char *kIconBmp = "icon.bmp";
 static bool axis[4]= { false, false, false, false };
 #endif
 
+
+#if !defined(NXDK)
 static int _scalerMultiplier = 3;
 static const Scaler *_scaler = &scaler_xbr;
+#else
+static int _scalerMultiplier = 1;
+static const Scaler *_scaler = &scaler_nearest;
+#endif
 
 static const struct {
 	const char *name;
 	const Scaler *scaler;
 } _scalers[] = {
 	{ "nearest", &scaler_nearest },
+#if !defined(NXDK)
 	{ "xbr", &scaler_xbr },
+#endif
 	{ 0, 0 }
 };
 
@@ -35,7 +43,11 @@ struct KeyMapping {
 
 struct System_SDL2 : System {
 	enum {
+#if defined(NXDK)
+		kJoystickCommitValue = 0x5000,
+#else
 		kJoystickCommitValue = 3200,
+#endif
 		kKeyMappingsSize = 20,
 		kAudioHz = 22050
 	};
@@ -582,29 +594,44 @@ void System_SDL2::processEvents() {
 			if (_controller) {
 				const bool pressed = (ev.cbutton.state == SDL_PRESSED);
 				switch (ev.cbutton.button) {
+#if defined(NXDK)
+				case SDL_CONTROLLER_BUTTON_X:
+#else
 				case SDL_CONTROLLER_BUTTON_A:
+#endif
 					if (pressed) {
 						pad.mask |= SYS_INP_RUN;
 					} else {
 						pad.mask &= ~SYS_INP_RUN;
 					}
 					break;
+#if defined(NXDK)
+				case SDL_CONTROLLER_BUTTON_A:
+#else
 				case SDL_CONTROLLER_BUTTON_B:
+#endif
 					if (pressed) {
 						pad.mask |= SYS_INP_JUMP;
 					} else {
 						pad.mask &= ~SYS_INP_JUMP;
 					}
 					break;
+#if defined(NXDK)
+				case SDL_CONTROLLER_BUTTON_B:
+				case SDL_CONTROLLER_BUTTON_Y:
+#else
 				case SDL_CONTROLLER_BUTTON_X:
+#endif
 					if (pressed) {
 						pad.mask |= SYS_INP_SHOOT;
 					} else {
 						pad.mask &= ~SYS_INP_SHOOT;
 					}
 					break;
+#if !defined(NXDK)
 				case SDL_CONTROLLER_BUTTON_Y:
 					break;
+#endif
 				case SDL_CONTROLLER_BUTTON_BACK:
 					inp.skip = pressed;
 					break;
@@ -771,15 +798,27 @@ void System_SDL2::prepareScaledGfx(const char *caption, bool fullscreen, bool wi
 	}
 	_texW = _screenW * _scalerMultiplier;
 	_texH = _screenH * _scalerMultiplier;
+#if defined(NXDK)
+	const int windowW = 640;
+	const int windowH = 480;
+	flags |= SDL_WINDOW_SHOWN;
+#else
 	const int windowW = widescreen ? _texH * 16 / 9 : _texW;
 	const int windowH = _texH;
+#endif
 	_window = SDL_CreateWindow(caption, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, windowW, windowH, flags);
+	assert(_window);
+#if defined(NXDK)
+	_renderer = SDL_CreateRenderer(_window, -1, 0);
+#else
 	SDL_Surface *icon = SDL_LoadBMP(kIconBmp);
 	if (icon) {
 		SDL_SetWindowIcon(_window, icon);
 		SDL_FreeSurface(icon);
 	}
 	_renderer = SDL_CreateRenderer(_window, -1, SDL_RENDERER_ACCELERATED);
+#endif
+	assert(_renderer);
 	SDL_RenderSetLogicalSize(_renderer, windowW, windowH);
 	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
 
